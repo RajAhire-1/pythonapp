@@ -1,31 +1,27 @@
-from flask import Flask, render_template_string, request, redirect, url_for, session, jsonify
+from flask import Flask, render_template_string, request, redirect, url_for, flash, session, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3
 import os
-import secrets
-from datetime import timedelta
-import re
 
 app = Flask(__name__)
-# Generate a secure secret key (change this in production!)
-app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
+app.secret_key = 'your_secret_key_here_12345'
 
-# HTML Template with improved styling
+# HTML Template with Modern Glass Morphism Design
 HTML_TEMPLATE = '''
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secure Login & Signup</title>
+    <title>Glassmorphism Auth</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
         
         * {
-            box-sizing: border-box;
             margin: 0;
             padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
         }
 
         body {
@@ -33,596 +29,730 @@ HTML_TEMPLATE = '''
             display: flex;
             justify-content: center;
             align-items: center;
-            font-family: 'Poppins', sans-serif;
             min-height: 100vh;
-            padding: 20px;
+            overflow: hidden;
+        }
+
+        /* Floating Background Elements */
+        .floating-elements {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: -1;
+        }
+
+        .float {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .float:nth-child(1) {
+            width: 80px;
+            height: 80px;
+            top: 20%;
+            left: 10%;
+            animation-delay: 0s;
+        }
+
+        .float:nth-child(2) {
+            width: 120px;
+            height: 120px;
+            top: 60%;
+            left: 80%;
+            animation-delay: 1s;
+        }
+
+        .float:nth-child(3) {
+            width: 60px;
+            height: 60px;
+            top: 80%;
+            left: 20%;
+            animation-delay: 2s;
+        }
+
+        .float:nth-child(4) {
+            width: 100px;
+            height: 100px;
+            top: 10%;
+            left: 70%;
+            animation-delay: 3s;
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0) rotate(0deg);
+            }
+            50% {
+                transform: translateY(-20px) rotate(180deg);
+            }
         }
 
         .container {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             position: relative;
-            overflow: hidden;
-            width: 850px;
+            width: 1000px;
             max-width: 100%;
-            min-height: 550px;
+            min-height: 600px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 25px 45px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
         }
 
-        .form-container {
+        .forms-container {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+        }
+
+        .form-control {
             position: absolute;
             top: 0;
+            left: 0;
+            width: 100%;
             height: 100%;
-            transition: all 0.6s ease-in-out;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 0 10%;
+            text-align: center;
+            transition: all 0.7s cubic-bezier(0.68, -0.55, 0.265, 1.55);
         }
 
-        .sign-in-container {
-            left: 0;
-            width: 50%;
+        .login-form {
+            opacity: 1;
             z-index: 2;
+            transform: translateX(0);
         }
 
-        .container.right-panel-active .sign-in-container {
-            transform: translateX(100%);
-        }
-
-        .sign-up-container {
-            left: 0;
-            width: 50%;
+        .register-form {
             opacity: 0;
             z-index: 1;
+            transform: translateX(100px);
         }
 
-        .container.right-panel-active .sign-up-container {
-            transform: translateX(100%);
+        .container.active .login-form {
+            opacity: 0;
+            z-index: 1;
+            transform: translateX(-100px);
+        }
+
+        .container.active .register-form {
             opacity: 1;
-            z-index: 5;
-            animation: show 0.6s;
+            z-index: 2;
+            transform: translateX(0);
         }
 
-        @keyframes show {
-            0%, 49.99% {
-                opacity: 0;
-                z-index: 1;
-            }
-            50%, 100% {
-                opacity: 1;
-                z-index: 5;
-            }
-        }
-
-        form {
-            background-color: #FFFFFF;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            padding: 0 50px;
-            height: 100%;
-            text-align: center;
-        }
-
-        h1 {
+        .form-title {
+            font-size: 2.8rem;
+            color: white;
+            margin-bottom: 15px;
             font-weight: 700;
-            margin-bottom: 10px;
-            color: #333;
-            font-size: 2em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
         }
 
-        .subtitle {
-            font-size: 14px;
-            color: #666;
-            margin-bottom: 20px;
+        .form-subtitle {
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 40px;
+            font-size: 1.1rem;
+            font-weight: 300;
         }
 
         .input-group {
             position: relative;
+            margin-bottom: 25px;
             width: 100%;
-            margin: 10px 0;
+            max-width: 400px;
         }
 
-        input {
-            background-color: #f0f0f0;
-            border: 2px solid transparent;
-            padding: 14px 15px;
+        .input-field {
             width: 100%;
-            border-radius: 10px;
-            font-family: 'Poppins', sans-serif;
-            font-size: 14px;
-            transition: all 0.3s ease;
-        }
-
-        input:focus {
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
             outline: none;
-            border-color: #667eea;
-            background-color: #fff;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+            padding: 18px 25px;
+            border-radius: 15px;
+            color: white;
+            font-size: 1rem;
+            font-weight: 400;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
         }
 
-        .password-toggle {
+        .input-field:focus {
+            background: rgba(255, 255, 255, 0.25);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .input-field::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .input-icon {
             position: absolute;
-            right: 15px;
+            right: 20px;
             top: 50%;
             transform: translateY(-50%);
-            cursor: pointer;
-            color: #999;
-            transition: color 0.3s;
-        }
-
-        .password-toggle:hover {
-            color: #667eea;
-        }
-
-        button {
-            border-radius: 25px;
-            border: none;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #FFFFFF;
-            font-size: 13px;
-            font-weight: 600;
-            padding: 14px 50px;
-            letter-spacing: 1px;
-            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.7);
             transition: all 0.3s ease;
+        }
+
+        .input-field:focus + .input-icon {
+            color: white;
+            transform: translateY(-50%) scale(1.2);
+        }
+
+        .submit-btn {
+            width: 100%;
+            max-width: 400px;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            border: none;
+            padding: 18px;
+            border-radius: 15px;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 600;
             cursor: pointer;
-            margin-top: 15px;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+            position: relative;
+            overflow: hidden;
         }
 
-        button:hover {
+        .submit-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .submit-btn:hover::before {
+            left: 100%;
+        }
+
+        .submit-btn:hover {
             transform: translateY(-3px);
-            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 15px 30px rgba(255, 107, 107, 0.4);
         }
 
-        button:active {
+        .submit-btn:active {
             transform: translateY(-1px);
         }
 
-        button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
+        .switch-form {
+            margin-top: 30px;
+            color: white;
+            font-weight: 300;
         }
 
-        button.ghost {
-            background: transparent;
-            border: 2px solid #FFFFFF;
-        }
-
-        button.ghost:hover {
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        a {
-            color: #667eea;
-            font-size: 13px;
+        .switch-form a {
+            color: #ff6b6b;
+            font-weight: 600;
             text-decoration: none;
-            margin: 15px 0;
-            transition: color 0.3s;
-        }
-
-        a:hover {
-            color: #764ba2;
-            text-decoration: underline;
-        }
-
-        .overlay-container {
-            position: absolute;
-            top: 0;
-            left: 50%;
-            width: 50%;
-            height: 100%;
-            overflow: hidden;
-            transition: transform 0.6s ease-in-out;
-            z-index: 100;
-        }
-
-        .container.right-panel-active .overlay-container {
-            transform: translateX(-100%);
-        }
-
-        .overlay {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #FFFFFF;
+            cursor: pointer;
+            transition: all 0.3s ease;
             position: relative;
-            left: -100%;
-            height: 100%;
-            width: 200%;
-            transform: translateX(0);
-            transition: transform 0.6s ease-in-out;
         }
 
-        .container.right-panel-active .overlay {
-            transform: translateX(50%);
-        }
-
-        .overlay-panel {
+        .switch-form a::after {
+            content: '';
             position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: #ff6b6b;
+            transition: width 0.3s ease;
+        }
+
+        .switch-form a:hover::after {
+            width: 100%;
+        }
+
+        .panels-container {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            pointer-events: none;
+        }
+
+        .panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 45%;
+            padding: 0 5%;
+            text-align: center;
+            z-index: 6;
+            transition: all 0.7s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            pointer-events: all;
+        }
+
+        .left-panel {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .right-panel {
+            transform: translateX(100px);
+            opacity: 0;
+        }
+
+        .container.active .left-panel {
+            transform: translateX(-100px);
+            opacity: 0;
+        }
+
+        .container.active .right-panel {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .panel-content {
+            color: white;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        .panel h3 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+
+        .panel p {
+            font-size: 1.1rem;
+            margin-bottom: 30px;
+            opacity: 0.9;
+            font-weight: 300;
+        }
+
+        .panel-btn {
+            background: transparent;
+            border: 2px solid white;
+            color: white;
+            padding: 12px 35px;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+        }
+
+        .panel-btn:hover {
+            background: white;
+            color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Social Icons */
+        .social-container {
+            margin: 25px 0;
+        }
+
+        .social-icons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .social-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
             display: flex;
             align-items: center;
             justify-content: center;
-            flex-direction: column;
-            padding: 0 40px;
-            text-align: center;
-            top: 0;
-            height: 100%;
-            width: 50%;
-            transform: translateX(0);
-            transition: transform 0.6s ease-in-out;
-        }
-
-        .overlay-panel h1 {
             color: white;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
         }
 
-        .overlay-panel p {
-            font-size: 15px;
-            font-weight: 300;
-            line-height: 24px;
-            margin: 20px 0 30px;
+        .social-icon:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-3px) rotate(10deg);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
         }
 
-        .overlay-left {
-            transform: translateX(-20%);
-        }
-
-        .container.right-panel-active .overlay-left {
-            transform: translateX(0);
-        }
-
-        .overlay-right {
-            right: 0;
-            transform: translateX(0);
-        }
-
-        .container.right-panel-active .overlay-right {
-            transform: translateX(20%);
-        }
-
+        /* Notification Styles */
         .notification {
             position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 16px 24px;
-            border-radius: 10px;
+            top: 30px;
+            right: 30px;
+            padding: 20px 30px;
+            border-radius: 15px;
             color: white;
             font-weight: 600;
             z-index: 1000;
-            transform: translateX(400px);
-            transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            transform: translateX(400px) scale(0.8);
+            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
         }
 
         .notification.show {
-            transform: translateX(0);
+            transform: translateX(0) scale(1);
         }
 
         .notification.success {
-            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            background: linear-gradient(135deg, #00b894, #55efc4);
         }
 
         .notification.error {
-            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+            background: linear-gradient(135deg, #ff7675, #fd79a8);
         }
 
+        /* Loading animation */
         .loading {
             display: inline-block;
-            width: 18px;
-            height: 18px;
-            border: 3px solid rgba(255,255,255,0.3);
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
             border-radius: 50%;
-            border-top-color: #ffffff;
-            animation: spin 0.8s linear infinite;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
         }
 
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
 
-        .strength-meter {
-            width: 100%;
-            height: 4px;
-            background: #e0e0e0;
-            border-radius: 2px;
-            margin-top: 5px;
-            overflow: hidden;
-        }
-
-        .strength-meter-fill {
-            height: 100%;
-            width: 0%;
-            transition: all 0.3s ease;
-            border-radius: 2px;
-        }
-
-        .strength-weak { background: #f44336; width: 33%; }
-        .strength-medium { background: #ff9800; width: 66%; }
-        .strength-strong { background: #4caf50; width: 100%; }
-
-        @media (max-width: 768px) {
+        /* Responsive Design */
+        @media (max-width: 900px) {
             .container {
-                width: 100%;
-                min-height: 600px;
-            }
-            
-            .form-container {
-                width: 100% !important;
-            }
-            
-            .overlay-container {
-                display: none;
-            }
-            
-            .sign-in-container,
-            .sign-up-container {
-                width: 100%;
-            }
-            
-            .container.right-panel-active .sign-in-container {
-                transform: translateX(-100%);
-                opacity: 0;
-            }
-            
-            .container.right-panel-active .sign-up-container {
-                transform: translateX(0);
+                min-height: 800px;
+                height: auto;
+                margin: 20px;
             }
 
-            form {
-                padding: 0 30px;
+            .panels-container {
+                flex-direction: column;
+                justify-content: space-between;
             }
 
-            .mobile-toggle {
-                display: block;
-                text-align: center;
-                margin-top: 20px;
-                color: #667eea;
-                font-size: 14px;
+            .panel {
+                width: 100%;
+                padding: 2rem 8%;
+            }
+
+            .left-panel {
+                order: 2;
+            }
+
+            .right-panel {
+                order: 1;
+            }
+
+            .form-title {
+                font-size: 2.2rem;
             }
         }
 
-        .mobile-toggle {
-            display: none;
+        @media (max-width: 570px) {
+            .form-control {
+                padding: 0 1.5rem;
+            }
+
+            .panel {
+                padding: 1rem;
+            }
+
+            .form-title {
+                font-size: 1.8rem;
+            }
+
+            .panel h3 {
+                font-size: 1.6rem;
+            }
         }
     </style>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
+    <!-- Floating Background Elements -->
+    <div class="floating-elements">
+        <div class="float"></div>
+        <div class="float"></div>
+        <div class="float"></div>
+        <div class="float"></div>
+    </div>
+
+    <!-- Notification Container -->
+    <div id="notification" class="notification"></div>
+
     <div class="container" id="container">
-        <div class="form-container sign-up-container">
-            <form id="signupForm">
-                <h1>Create Account</h1>
-                <p class="subtitle">Sign up to get started</p>
+        <div class="forms-container">
+            <!-- Login Form -->
+            <div class="form-control login-form">
+                <h2 class="form-title">Welcome Back!</h2>
+                <p class="form-subtitle">Sign in to your account</p>
                 
-                <div class="input-group">
-                    <input type="text" name="username" placeholder="Username" required minlength="3" />
-                </div>
-                
-                <div class="input-group">
-                    <input type="email" name="email" placeholder="Email" required />
-                </div>
-                
-                <div class="input-group">
-                    <input type="password" id="signupPassword" name="password" placeholder="Password" required minlength="6" />
-                    <i class="fas fa-eye password-toggle" onclick="togglePassword('signupPassword')"></i>
-                    <div class="strength-meter">
-                        <div class="strength-meter-fill" id="strengthMeter"></div>
+                <div class="social-container">
+                    <div class="social-icons">
+                        <a href="#" class="social-icon">
+                            <i class="fab fa-google"></i>
+                        </a>
+                        <a href="#" class="social-icon">
+                            <i class="fab fa-facebook-f"></i>
+                        </a>
+                        <a href="#" class="social-icon">
+                            <i class="fab fa-twitter"></i>
+                        </a>
                     </div>
                 </div>
                 
-                <div class="input-group">
-                    <input type="password" id="confirmPassword" name="confirm_password" placeholder="Confirm Password" required />
-                    <i class="fas fa-eye password-toggle" onclick="togglePassword('confirmPassword')"></i>
+                <span style="color: rgba(255,255,255,0.7); margin: 15px 0;">or use your email</span>
+                
+                <form id="loginForm">
+                    <div class="input-group">
+                        <input type="text" class="input-field" placeholder="Username or Email" required>
+                        <i class="fas fa-user input-icon"></i>
+                    </div>
+                    <div class="input-group">
+                        <input type="password" class="input-field" placeholder="Password" required>
+                        <i class="fas fa-lock input-icon"></i>
+                    </div>
+                    <button type="submit" class="submit-btn">Sign In</button>
+                </form>
+                
+                <div class="switch-form">
+                    Don't have an account? <a id="show-register">Sign Up</a>
+                </div>
+            </div>
+
+            <!-- Registration Form -->
+            <div class="form-control register-form">
+                <h2 class="form-title">Create Account</h2>
+                <p class="form-subtitle">Join our community today</p>
+                
+                <div class="social-container">
+                    <div class="social-icons">
+                        <a href="#" class="social-icon">
+                            <i class="fab fa-google"></i>
+                        </a>
+                        <a href="#" class="social-icon">
+                            <i class="fab fa-facebook-f"></i>
+                        </a>
+                        <a href="#" class="social-icon">
+                            <i class="fab fa-twitter"></i>
+                        </a>
+                    </div>
                 </div>
                 
-                <button type="submit">Sign Up</button>
-                <div class="mobile-toggle">
-                    Already have an account? <a href="#" onclick="toggleForms(); return false;">Sign In</a>
+                <span style="color: rgba(255,255,255,0.7); margin: 15px 0;">or use your email</span>
+                
+                <form id="registerForm">
+                    <div class="input-group">
+                        <input type="text" class="input-field" placeholder="Full Name" required>
+                        <i class="fas fa-user input-icon"></i>
+                    </div>
+                    <div class="input-group">
+                        <input type="email" class="input-field" placeholder="Email" required>
+                        <i class="fas fa-envelope input-icon"></i>
+                    </div>
+                    <div class="input-group">
+                        <input type="text" class="input-field" placeholder="Username" required>
+                        <i class="fas fa-at input-icon"></i>
+                    </div>
+                    <div class="input-group">
+                        <input type="password" class="input-field" placeholder="Password" required>
+                        <i class="fas fa-lock input-icon"></i>
+                    </div>
+                    <div class="input-group">
+                        <input type="password" class="input-field" placeholder="Confirm Password" required>
+                        <i class="fas fa-lock input-icon"></i>
+                    </div>
+                    <button type="submit" class="submit-btn">Create Account</button>
+                </form>
+                
+                <div class="switch-form">
+                    Already have an account? <a id="show-login">Sign In</a>
                 </div>
-            </form>
+            </div>
         </div>
-        
-        <div class="form-container sign-in-container">
-            <form id="loginForm">
-                <h1>Welcome Back</h1>
-                <p class="subtitle">Sign in to your account</p>
-                
-                <div class="input-group">
-                    <input type="text" name="username" placeholder="Username" required />
+
+        <div class="panels-container">
+            <!-- Left Panel (Login) -->
+            <div class="panel left-panel">
+                <div class="panel-content">
+                    <h3>New Here?</h3>
+                    <p>Create an account and discover amazing features!</p>
+                    <button class="panel-btn" id="register-btn">Sign Up</button>
                 </div>
-                
-                <div class="input-group">
-                    <input type="password" id="loginPassword" name="password" placeholder="Password" required />
-                    <i class="fas fa-eye password-toggle" onclick="togglePassword('loginPassword')"></i>
-                </div>
-                
-                <a href="#">Forgot your password?</a>
-                <button type="submit">Sign In</button>
-                <div class="mobile-toggle">
-                    Don't have an account? <a href="#" onclick="toggleForms(); return false;">Sign Up</a>
-                </div>
-            </form>
-        </div>
-        
-        <div class="overlay-container">
-            <div class="overlay">
-                <div class="overlay-panel overlay-left">
-                    <h1>Welcome Back!</h1>
-                    <p>To keep connected with us please login with your personal info</p>
-                    <button class="ghost" id="signIn">Sign In</button>
-                </div>
-                <div class="overlay-panel overlay-right">
-                    <h1>Hello, Friend!</h1>
-                    <p>Enter your personal details and start your journey with us</p>
-                    <button class="ghost" id="signUp">Sign Up</button>
+            </div>
+
+            <!-- Right Panel (Register) -->
+            <div class="panel right-panel">
+                <div class="panel-content">
+                    <h3>One of Us?</h3>
+                    <p>If you already have an account, just sign in.</p>
+                    <button class="panel-btn" id="login-btn">Sign In</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div id="notification" class="notification"></div>
-
     <script>
-        const container = document.getElementById('container');
-        const signUpButton = document.getElementById('signUp');
-        const signInButton = document.getElementById('signIn');
-        const loginForm = document.getElementById('loginForm');
-        const signupForm = document.getElementById('signupForm');
-        const signupPassword = document.getElementById('signupPassword');
-        const strengthMeter = document.getElementById('strengthMeter');
+        document.addEventListener('DOMContentLoaded', function() {
+            const container = document.getElementById('container');
+            const showRegister = document.getElementById('show-register');
+            const showLogin = document.getElementById('show-login');
+            const registerBtn = document.getElementById('register-btn');
+            const loginBtn = document.getElementById('login-btn');
+            const loginForm = document.getElementById('loginForm');
+            const registerForm = document.getElementById('registerForm');
+            const successMessage = document.getElementById('notification');
 
-        if (signUpButton) {
-            signUpButton.addEventListener('click', () => {
-                container.classList.add('right-panel-active');
+            // Switch to Register Form
+            showRegister.addEventListener('click', () => {
+                container.classList.add('active');
             });
-        }
 
-        if (signInButton) {
-            signInButton.addEventListener('click', () => {
-                container.classList.remove('right-panel-active');
+            registerBtn.addEventListener('click', () => {
+                container.classList.add('active');
             });
-        }
 
-        function toggleForms() {
-            container.classList.toggle('right-panel-active');
-        }
+            // Switch to Login Form
+            showLogin.addEventListener('click', () => {
+                container.classList.remove('active');
+            });
 
-        function togglePassword(inputId) {
-            const input = document.getElementById(inputId);
-            const icon = input.nextElementSibling;
-            
-            if (input.type === 'password') {
-                input.type = 'text';
-                icon.classList.remove('fa-eye');
-                icon.classList.add('fa-eye-slash');
-            } else {
-                input.type = 'password';
-                icon.classList.remove('fa-eye-slash');
-                icon.classList.add('fa-eye');
-            }
-        }
+            loginBtn.addEventListener('click', () => {
+                container.classList.remove('active');
+            });
 
-        function showNotification(message, type = 'success') {
-            const notification = document.getElementById('notification');
-            notification.textContent = message;
-            notification.className = `notification ${type} show`;
-            
-            setTimeout(() => {
-                notification.classList.remove('show');
-            }, 4000);
-        }
-
-        // Password strength meter
-        if (signupPassword) {
-            signupPassword.addEventListener('input', function() {
-                const password = this.value;
-                let strength = 0;
+            // Form Submission
+            loginForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
                 
-                if (password.length >= 6) strength++;
-                if (password.length >= 10) strength++;
-                if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++;
-                if (/\d/.test(password)) strength++;
-                if (/[^a-zA-Z0-9]/.test(password)) strength++;
+                const submitButton = this.querySelector('button[type="submit"]');
+                const originalText = submitButton.innerHTML;
+                submitButton.innerHTML = '<div class="loading"></div>';
+                submitButton.disabled = true;
+
+                const formData = new FormData(this);
                 
-                strengthMeter.className = 'strength-meter-fill';
-                
-                if (strength <= 2) {
-                    strengthMeter.classList.add('strength-weak');
-                } else if (strength <= 4) {
-                    strengthMeter.classList.add('strength-medium');
-                } else {
-                    strengthMeter.classList.add('strength-strong');
+                try {
+                    const response = await fetch('/login', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        showNotification(data.message, 'success');
+                        setTimeout(() => {
+                            window.location.href = '/dashboard';
+                        }, 1500);
+                    } else {
+                        showNotification(data.message, 'error');
+                    }
+                } catch (error) {
+                    showNotification('An error occurred. Please try again.', 'error');
+                } finally {
+                    submitButton.innerHTML = originalText;
+                    submitButton.disabled = false;
                 }
             });
-        }
 
-        // Login form submission
-        loginForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const submitButton = this.querySelector('button[type="submit"]');
-            const originalText = submitButton.innerHTML;
-            submitButton.innerHTML = '<div class="loading"></div>';
-            submitButton.disabled = true;
+            // Handle signup form submission
+            registerForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const submitButton = this.querySelector('button[type="submit"]');
+                const originalText = submitButton.innerHTML;
+                submitButton.innerHTML = '<div class="loading"></div>';
+                submitButton.disabled = true;
 
-            const formData = new FormData(this);
+                const formData = new FormData(this);
+                
+                try {
+                    const response = await fetch('/signup', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        showNotification(data.message, 'success');
+                        setTimeout(() => {
+                            container.classList.remove('active');
+                            registerForm.reset();
+                        }, 2000);
+                    } else {
+                        showNotification(data.message, 'error');
+                    }
+                } catch (error) {
+                    showNotification('An error occurred. Please try again.', 'error');
+                } finally {
+                    submitButton.innerHTML = originalText;
+                    submitButton.disabled = false;
+                }
+            });
+
+            // Show notification
+            function showNotification(message, type = 'success') {
+                const notification = document.getElementById('notification');
+                notification.textContent = message;
+                notification.className = `notification ${type} show`;
+                
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                }, 4000);
+            }
+
+            // Add input animations
+            const inputs = document.querySelectorAll('.input-field');
             
-            try {
-                const response = await fetch('/login', {
-                    method: 'POST',
-                    body: formData
+            inputs.forEach(input => {
+                input.addEventListener('focus', () => {
+                    input.parentElement.style.transform = 'translateY(-5px)';
                 });
                 
-                const data = await response.json();
-                
-                if (data.success) {
-                    showNotification(data.message, 'success');
-                    setTimeout(() => {
-                        window.location.href = '/dashboard';
-                    }, 1500);
-                } else {
-                    showNotification(data.message, 'error');
-                }
-            } catch (error) {
-                showNotification('Connection error. Please try again.', 'error');
-            } finally {
-                submitButton.innerHTML = originalText;
-                submitButton.disabled = false;
-            }
-        });
+                input.addEventListener('blur', () => {
+                    input.parentElement.style.transform = 'translateY(0)';
+                });
+            });
 
-        // Signup form submission
-        signupForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const password = this.querySelector('[name="password"]').value;
-            const confirmPassword = this.querySelector('[name="confirm_password"]').value;
-            
-            if (password !== confirmPassword) {
-                showNotification('Passwords do not match!', 'error');
-                return;
-            }
-            
-            const submitButton = this.querySelector('button[type="submit"]');
-            const originalText = submitButton.innerHTML;
-            submitButton.innerHTML = '<div class="loading"></div>';
-            submitButton.disabled = true;
-
-            const formData = new FormData(this);
-            
-            try {
-                const response = await fetch('/signup', {
-                    method: 'POST',
-                    body: formData
+            // Add hover effect to buttons
+            const buttons = document.querySelectorAll('button');
+            buttons.forEach(button => {
+                button.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(-3px)';
                 });
                 
-                const data = await response.json();
-                
-                if (data.success) {
-                    showNotification(data.message, 'success');
-                    setTimeout(() => {
-                        container.classList.remove('right-panel-active');
-                        signupForm.reset();
-                        strengthMeter.className = 'strength-meter-fill';
-                    }, 2000);
-                } else {
-                    showNotification(data.message, 'error');
-                }
-            } catch (error) {
-                showNotification('Connection error. Please try again.', 'error');
-            } finally {
-                submitButton.innerHTML = originalText;
-                submitButton.disabled = false;
-            }
-        });
-
-        // Input animations
-        document.querySelectorAll('input').forEach(input => {
-            input.addEventListener('focus', function() {
-                this.parentElement.style.transform = 'scale(1.01)';
-                this.parentElement.style.transition = 'transform 0.2s ease';
-            });
-            
-            input.addEventListener('blur', function() {
-                this.parentElement.style.transform = 'scale(1)';
+                button.addEventListener('mouseleave', function() {
+                    if (!this.disabled) {
+                        this.style.transform = 'translateY(0)';
+                    }
+                });
             });
         });
     </script>
@@ -630,191 +760,179 @@ HTML_TEMPLATE = '''
 </html>
 '''
 
-# Dashboard HTML with improved design
+# Dashboard HTML with Glass Morphism
 DASHBOARD_HTML = '''
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Welcome</title>
+    <title>Dashboard</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
         
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
         }
 
         body {
-            font-family: 'Poppins', sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 20px;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .floating-elements {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: -1;
+        }
+
+        .float {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .float:nth-child(1) {
+            width: 100px;
+            height: 100px;
+            top: 10%;
+            left: 20%;
+            animation-delay: 0s;
+        }
+
+        .float:nth-child(2) {
+            width: 150px;
+            height: 150px;
+            top: 60%;
+            left: 70%;
+            animation-delay: 2s;
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0) rotate(0deg);
+            }
+            50% {
+                transform: translateY(-20px) rotate(180deg);
+            }
         }
 
         .dashboard-container {
-            background: white;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(15px);
             padding: 50px;
             border-radius: 25px;
-            box-shadow: 0 25px 70px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 25px 45px rgba(0, 0, 0, 0.1);
             text-align: center;
             max-width: 600px;
-            width: 100%;
-            animation: fadeInUp 0.6s ease;
+            width: 90%;
+            position: relative;
+            overflow: hidden;
         }
 
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        .dashboard-container::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, #ff6b6b, #667eea, #764ba2);
+            z-index: -1;
+            animation: borderGlow 3s linear infinite;
+            background-size: 400%;
+            border-radius: 27px;
+            opacity: 0.7;
         }
 
-        .avatar {
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 20px;
-            font-size: 3em;
-            color: white;
-            font-weight: bold;
+        @keyframes borderGlow {
+            0% { background-position: 0 0; }
+            50% { background-position: 400% 0; }
+            100% { background-position: 0 0; }
         }
 
         .welcome-message {
-            color: #333;
-            font-size: 2.2em;
-            margin-bottom: 10px;
+            font-size: 2.8rem;
+            color: white;
+            margin-bottom: 20px;
             font-weight: 700;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
         }
 
-        .subtitle {
-            color: #666;
-            font-size: 1.1em;
+        .dashboard-container p {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.2rem;
             margin-bottom: 30px;
             font-weight: 300;
         }
 
-        .user-info {
-            background: #f8f9fa;
-            padding: 25px;
-            border-radius: 15px;
-            margin: 30px 0;
-            text-align: left;
-        }
-
-        .user-info-item {
-            display: flex;
-            align-items: center;
-            padding: 10px 0;
-            border-bottom: 1px solid #e0e0e0;
-        }
-
-        .user-info-item:last-child {
-            border-bottom: none;
-        }
-
-        .user-info-item i {
-            font-size: 1.2em;
-            color: #667eea;
-            margin-right: 15px;
-            width: 25px;
-        }
-
-        .user-info-label {
-            font-weight: 600;
-            color: #555;
-            margin-right: 10px;
-        }
-
-        .user-info-value {
-            color: #888;
-        }
-
         .logout-btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
             color: white;
             border: none;
             padding: 15px 40px;
             border-radius: 25px;
-            font-size: 16px;
+            font-size: 1.1rem;
             font-weight: 600;
             cursor: pointer;
             text-decoration: none;
             display: inline-block;
             transition: all 0.3s ease;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .logout-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .logout-btn:hover::before {
+            left: 100%;
         }
 
         .logout-btn:hover {
             transform: translateY(-3px);
-            box-shadow: 0 15px 35px rgba(102, 126, 234, 0.4);
-        }
-
-        @media (max-width: 600px) {
-            .dashboard-container {
-                padding: 30px 20px;
-            }
-
-            .welcome-message {
-                font-size: 1.8em;
-            }
-
-            .subtitle {
-                font-size: 1em;
-            }
+            box-shadow: 0 15px 30px rgba(255, 107, 107, 0.4);
         }
     </style>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
+    <!-- Floating Background Elements -->
+    <div class="floating-elements">
+        <div class="float"></div>
+        <div class="float"></div>
+    </div>
+    
     <div class="dashboard-container">
-        <div class="avatar">{{ username[0].upper() }}</div>
-        <h1 class="welcome-message">Welcome, {{ username }}!</h1>
-        <p class="subtitle">You're successfully logged in</p>
-        
-        <div class="user-info">
-            <div class="user-info-item">
-                <i class="fas fa-user"></i>
-                <span class="user-info-label">Username:</span>
-                <span class="user-info-value">{{ username }}</span>
-            </div>
-            <div class="user-info-item">
-                <i class="fas fa-envelope"></i>
-                <span class="user-info-label">Email:</span>
-                <span class="user-info-value">{{ email }}</span>
-            </div>
-            <div class="user-info-item">
-                <i class="fas fa-calendar"></i>
-                <span class="user-info-label">Member since:</span>
-                <span class="user-info-value">{{ created_at }}</span>
-            </div>
-        </div>
-        
-        <a href="/logout" class="logout-btn">
-            <i class="fas fa-sign-out-alt"></i> Logout
-        </a>
+        <h1 class="welcome-message">Welcome, {{ username }}! 🎉</h1>
+        <p>You have successfully logged into your account.</p>
+        <a href="/logout" class="logout-btn">Logout</a>
     </div>
 </body>
 </html>
 '''
 
-# Database initialization
+# Database setup
 def init_db():
-    """Initialize the database with users table"""
     conn = sqlite3.connect('users.db')
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS users
@@ -826,120 +944,87 @@ def init_db():
     conn.commit()
     conn.close()
 
+# Database connection helper
 def get_db_connection():
-    """Get database connection with row factory"""
     conn = sqlite3.connect('users.db')
     conn.row_factory = sqlite3.Row
     return conn
 
-def validate_email(email):
-    """Validate email format"""
-    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-    return re.match(pattern, email) is not None
-
-def validate_username(username):
-    """Validate username (alphanumeric and underscores only)"""
-    pattern = r'^[a-zA-Z0-9_]{3,20}$'
-    return re.match(pattern, username) is not None
-
 @app.route('/')
 def index():
-    """Main page - redirect to dashboard if logged in"""
-    if 'user_id' in session:
-        return redirect(url_for('dashboard'))
     return render_template_string(HTML_TEMPLATE)
 
 @app.route('/login', methods=['POST'])
 def login():
-    """Handle user login"""
-    username = request.form.get('username', '').strip()
-    password = request.form.get('password', '')
-    
-    if not username or not password:
-        return jsonify({'success': False, 'message': 'Please fill in all fields!'})
-    
-    conn = get_db_connection()
-    user = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
-    conn.close()
-    
-    if user and check_password_hash(user['password'], password):
-        session.permanent = True
-        session['user_id'] = user['id']
-        session['username'] = user['username']
-        session['email'] = user['email']
-        return jsonify({'success': True, 'message': 'Login successful!'})
-    else:
-        return jsonify({'success': False, 'message': 'Invalid username or password!'})
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        
+        conn = get_db_connection()
+        user = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
+        conn.close()
+        
+        if user and check_password_hash(user['password'], password):
+            session['user_id'] = user['id']
+            session['username'] = user['username']
+            return jsonify({'success': True, 'message': 'Login successful!'})
+        else:
+            return jsonify({'success': False, 'message': 'Invalid username or password!'})
 
 @app.route('/signup', methods=['POST'])
 def signup():
-    """Handle user registration"""
-    username = request.form.get('username', '').strip()
-    email = request.form.get('email', '').strip().lower()
-    password = request.form.get('password', '')
-    confirm_password = request.form.get('confirm_password', '')
-    
-    # Validation
-    if not all([username, email, password, confirm_password]):
-        return jsonify({'success': False, 'message': 'Please fill in all fields!'})
-    
-    if not validate_username(username):
-        return jsonify({'success': False, 'message': 'Username must be 3-20 characters (letters, numbers, underscores only)!'})
-    
-    if not validate_email(email):
-        return jsonify({'success': False, 'message': 'Please enter a valid email address!'})
-    
-    if len(password) < 6:
-        return jsonify({'success': False, 'message': 'Password must be at least 6 characters long!'})
-    
-    if password != confirm_password:
-        return jsonify({'success': False, 'message': 'Passwords do not match!'})
-    
-    hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
-    
-    conn = get_db_connection()
-    try:
-        conn.execute('INSERT INTO users (username, email, password) VALUES (?, ?, ?)',
-                    (username, email, hashed_password))
-        conn.commit()
-        conn.close()
-        return jsonify({'success': True, 'message': 'Registration successful! Please login.'})
-    except sqlite3.IntegrityError:
-        conn.close()
-        return jsonify({'success': False, 'message': 'Username or email already exists!'})
+    if request.method == 'POST':
+        username = request.form['username']
+        email = request.form['email']
+        password = request.form['password']
+        confirm_password = request.form['confirm_password']
+        
+        if len(password) < 6:
+            return jsonify({'success': False, 'message': 'Password must be at least 6 characters long!'})
+        
+        if password != confirm_password:
+            return jsonify({'success': False, 'message': 'Passwords do not match!'})
+        
+        hashed_password = generate_password_hash(password)
+        
+        conn = get_db_connection()
+        try:
+            conn.execute('INSERT INTO users (username, email, password) VALUES (?, ?, ?)',
+                        (username, email, hashed_password))
+            conn.commit()
+            conn.close()
+            return jsonify({'success': True, 'message': 'Registration successful! Please login.'})
+        except sqlite3.IntegrityError:
+            conn.close()
+            return jsonify({'success': False, 'message': 'Username or email already exists!'})
 
 @app.route('/dashboard')
 def dashboard():
-    """User dashboard - protected route"""
-    if 'user_id' not in session:
-        return redirect(url_for('index'))
-    
-    conn = get_db_connection()
-    user = conn.execute('SELECT * FROM users WHERE id = ?', (session['user_id'],)).fetchone()
-    conn.close()
-    
-    if user:
-        return render_template_string(
-            DASHBOARD_HTML, 
-            username=user['username'],
-            email=user['email'],
-            created_at=user['created_at'].split()[0] if user['created_at'] else 'N/A'
-        )
-    
-    session.clear()
+    if 'user_id' in session:
+        return render_template_string(DASHBOARD_HTML, username=session['username'])
     return redirect(url_for('index'))
 
 @app.route('/logout')
 def logout():
-    """Handle user logout"""
     session.clear()
     return redirect(url_for('index'))
 
-@app.route('/api/users')
-def list_users():
-    """API endpoint to list all users (for debugging - remove in production)"""
+@app.route('/check_db')
+def check_db():
+    """Route to check database contents (for debugging)"""
     conn = get_db_connection()
-    users = conn.execute('SELECT id, username, email, created_at FROM users ORDER BY created_at DESC').fetchall()
+    users = conn.execute('SELECT id, username, email, created_at FROM users').fetchall()
     conn.close()
     
-    users_list =
+    users_list = []
+    for user in users:
+        users_list.append(dict(user))
+    
+    return jsonify({'users': users_list})
+
+if __name__ == '__main__':
+    init_db()
+    print("Database initialized successfully!")
+    print("Starting Flask application...")
+    print("Open http://localhost:5000 in your browser")
+    app.run(debug=True, host='0.0.0.0', port=5000)
