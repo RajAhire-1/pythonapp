@@ -786,13 +786,5 @@
                 input.parentElement.style.transform = 'translateY(-5px)';
             });
             
-            input.addEventListener('blur', () => {
-                input.parentElement.style.transform = 'translateY(0)';
-            });
-        });
-
-        // Initialize particles
-        createParticles();
-    </script>
-</body>
+           
 </html>
