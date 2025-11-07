@@ -1,568 +1,798 @@
-import tkinter as tk
-from tkinter import messagebox
-import json
-import os
-from PIL import Image, ImageTk
-import re
-
-class AnimatedLoginApp:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Animated Login & Registration")
-        self.root.geometry("900x600")
-        self.root.configure(bg='#f0f2f5')
-        self.root.resizable(False, False)
-        
-        # Center the window
-        self.center_window()
-        
-        # Data file for storing user information
-        self.data_file = "users.json"
-        self.load_users()
-        
-        # Colors
-        self.primary_color = "#4e54c8"
-        self.secondary_color = "#8f94fb"
-        self.accent_color = "#ff6b6b"
-        self.text_color = "#333333"
-        self.light_text = "#ffffff"
-        
-        # Animation variables
-        self.animation_running = False
-        self.canvas_items = []
-        
-        # Create the main container
-        self.main_frame = tk.Frame(self.root, bg='#f0f2f5')
-        self.main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
-        
-        # Show login screen by default
-        self.show_login_screen()
-        
-        # Start background animation
-        self.start_background_animation()
-    
-    def center_window(self):
-        """Center the window on the screen"""
-        self.root.update_idletasks()
-        width = self.root.winfo_width()
-        height = self.root.winfo_height()
-        x = (self.root.winfo_screenwidth() // 2) - (width // 2)
-        y = (self.root.winfo_screenheight() // 2) - (height // 2)
-        self.root.geometry('{}x{}+{}+{}'.format(width, height, x, y))
-    
-    def load_users(self):
-        """Load user data from JSON file"""
-        if os.path.exists(self.data_file):
-            with open(self.data_file, 'r') as file:
-                self.users = json.load(file)
-        else:
-            self.users = {}
-    
-    def save_users(self):
-        """Save user data to JSON file"""
-        with open(self.data_file, 'w') as file:
-            json.dump(self.users, file, indent=4)
-    
-    def start_background_animation(self):
-        """Create animated background with floating shapes"""
-        self.canvas = tk.Canvas(self.main_frame, bg='#f0f2f5', highlightthickness=0)
-        self.canvas.place(relwidth=1, relheight=1)
-        
-        # Create floating shapes
-        self.shapes = []
-        colors = ['#4e54c8', '#8f94fb', '#ff6b6b', '#6a11cb', '#2575fc']
-        
-        for _ in range(15):
-            x = self.canvas.winfo_reqwidth() * 0.1 + tk._flatten(self.canvas.winfo_geometry())[2] * 0.8 * tk._default_root.random()
-            y = self.canvas.winfo_reqheight() * 0.1 + tk._default_root.random() * 0.8 * self.canvas.winfo_reqheight()
-            size = 20 + tk._default_root.random() * 40
-            color = colors[int(tk._default_root.random() * len(colors))]
-            shape_type = tk._default_root.random()
-            
-            if shape_type < 0.33:
-                shape = self.canvas.create_oval(x, y, x+size, y+size, fill=color, outline="")
-            elif shape_type < 0.66:
-                shape = self.canvas.create_rectangle(x, y, x+size, y+size, fill=color, outline="")
-            else:
-                shape = self.canvas.create_polygon(
-                    x, y+size/2,
-                    x+size/2, y,
-                    x+size, y+size/2,
-                    x+size/2, y+size,
-                    fill=color, outline=""
-                )
-            
-            self.shapes.append({
-                'id': shape,
-                'dx': (tk._default_root.random() - 0.5) * 2,
-                'dy': (tk._default_root.random() - 0.5) * 2,
-                'size': size
-            })
-        
-        self.animation_running = True
-        self.animate_shapes()
-    
-    def animate_shapes(self):
-        """Animate the floating shapes"""
-        if not self.animation_running:
-            return
-            
-        canvas_width = self.canvas.winfo_width()
-        canvas_height = self.canvas.winfo_height()
-        
-        for shape in self.shapes:
-            self.canvas.move(shape['id'], shape['dx'], shape['dy'])
-            x1, y1, x2, y2 = self.canvas.coords(shape['id'])
-            
-            # Bounce off edges
-            if x1 <= 0 or x2 >= canvas_width:
-                shape['dx'] *= -1
-            if y1 <= 0 or y2 >= canvas_height:
-                shape['dy'] *= -1
-        
-        self.root.after(50, self.animate_shapes)
-    
-    def stop_animation(self):
-        """Stop the background animation"""
-        self.animation_running = False
-    
-    def show_login_screen(self):
-        """Display the login screen"""
-        self.clear_screen()
-        self.stop_animation()
-        
-        # Create login container
-        login_container = tk.Frame(self.main_frame, bg='white', relief='raised', bd=0)
-        login_container.place(relx=0.5, rely=0.5, anchor='center', width=400, height=500)
-        
-        # Title with animation
-        title_label = tk.Label(
-            login_container, 
-            text="Welcome Back!", 
-            font=('Arial', 24, 'bold'),
-            bg='white',
-            fg=self.primary_color
-        )
-        title_label.pack(pady=(40, 20))
-        
-        # Subtitle
-        subtitle_label = tk.Label(
-            login_container,
-            text="Sign in to your account",
-            font=('Arial', 12),
-            bg='white',
-            fg=self.text_color
-        )
-        subtitle_label.pack(pady=(0, 30))
-        
-        # Username field
-        username_frame = tk.Frame(login_container, bg='white')
-        username_frame.pack(pady=10, padx=40, fill='x')
-        
-        username_label = tk.Label(
-            username_frame,
-            text="Username",
-            font=('Arial', 10, 'bold'),
-            bg='white',
-            fg=self.text_color,
-            anchor='w'
-        )
-        username_label.pack(fill='x')
-        
-        self.username_entry = tk.Entry(
-            username_frame,
-            font=('Arial', 12),
-            relief='solid',
-            bd=1,
-            highlightthickness=1,
-            highlightcolor=self.primary_color,
-            highlightbackground='#dddddd'
-        )
-        self.username_entry.pack(fill='x', pady=(5, 0), ipady=8)
-        self.username_entry.bind('<FocusIn>', lambda e: self.on_entry_focus_in(e, self.username_entry))
-        self.username_entry.bind('<FocusOut>', lambda e: self.on_entry_focus_out(e, self.username_entry))
-        
-        # Password field
-        password_frame = tk.Frame(login_container, bg='white')
-        password_frame.pack(pady=10, padx=40, fill='x')
-        
-        password_label = tk.Label(
-            password_frame,
-            text="Password",
-            font=('Arial', 10, 'bold'),
-            bg='white',
-            fg=self.text_color,
-            anchor='w'
-        )
-        password_label.pack(fill='x')
-        
-        self.password_entry = tk.Entry(
-            password_frame,
-            font=('Arial', 12),
-            relief='solid',
-            bd=1,
-            show='•',
-            highlightthickness=1,
-            highlightcolor=self.primary_color,
-            highlightbackground='#dddddd'
-        )
-        self.password_entry.pack(fill='x', pady=(5, 0), ipady=8)
-        self.password_entry.bind('<FocusIn>', lambda e: self.on_entry_focus_in(e, self.password_entry))
-        self.password_entry.bind('<FocusOut>', lambda e: self.on_entry_focus_out(e, self.password_entry))
-        
-        # Remember me and Forgot password
-        options_frame = tk.Frame(login_container, bg='white')
-        options_frame.pack(pady=10, padx=40, fill='x')
-        
-        self.remember_var = tk.BooleanVar()
-        remember_check = tk.Checkbutton(
-            options_frame,
-            text="Remember me",
-            variable=self.remember_var,
-            bg='white',
-            fg=self.text_color,
-            font=('Arial', 10),
-            selectcolor='white'
-        )
-        remember_check.pack(side='left')
-        
-        forgot_label = tk.Label(
-            options_frame,
-            text="Forgot password?",
-            font=('Arial', 10, 'underline'),
-            bg='white',
-            fg=self.primary_color,
-            cursor="hand2"
-        )
-        forgot_label.pack(side='right')
-        forgot_label.bind('<Button-1>', lambda e: self.forgot_password())
-        
-        # Login button
-        login_button = tk.Button(
-            login_container,
-            text="Sign In",
-            font=('Arial', 12, 'bold'),
-            bg=self.primary_color,
-            fg='white',
-            activebackground=self.secondary_color,
-            activeforeground='white',
-            relief='flat',
-            bd=0,
-            cursor="hand2",
-            command=self.login
-        )
-        login_button.pack(pady=20, padx=40, fill='x', ipady=12)
-        
-        # Register link
-        register_frame = tk.Frame(login_container, bg='white')
-        register_frame.pack(pady=20)
-        
-        register_label1 = tk.Label(
-            register_frame,
-            text="Don't have an account?",
-            font=('Arial', 10),
-            bg='white',
-            fg=self.text_color
-        )
-        register_label1.pack(side='left')
-        
-        register_label2 = tk.Label(
-            register_frame,
-            text="Sign Up",
-            font=('Arial', 10, 'bold', 'underline'),
-            bg='white',
-            fg=self.primary_color,
-            cursor="hand2"
-        )
-        register_label2.pack(side='left', padx=(5, 0))
-        register_label2.bind('<Button-1>', lambda e: self.show_registration_screen())
-        
-        # Start animation after UI is created
-        self.root.after(100, self.start_background_animation)
-    
-    def show_registration_screen(self):
-        """Display the registration screen"""
-        self.clear_screen()
-        self.stop_animation()
-        
-        # Create registration container
-        reg_container = tk.Frame(self.main_frame, bg='white', relief='raised', bd=0)
-        reg_container.place(relx=0.5, rely=0.5, anchor='center', width=400, height=550)
-        
-        # Title with animation
-        title_label = tk.Label(
-            reg_container, 
-            text="Create Account", 
-            font=('Arial', 24, 'bold'),
-            bg='white',
-            fg=self.primary_color
-        )
-        title_label.pack(pady=(30, 20))
-        
-        # Subtitle
-        subtitle_label = tk.Label(
-            reg_container,
-            text="Sign up for a new account",
-            font=('Arial', 12),
-            bg='white',
-            fg=self.text_color
-        )
-        subtitle_label.pack(pady=(0, 20))
-        
-        # Full Name field
-        name_frame = tk.Frame(reg_container, bg='white')
-        name_frame.pack(pady=8, padx=40, fill='x')
-        
-        name_label = tk.Label(
-            name_frame,
-            text="Full Name",
-            font=('Arial', 10, 'bold'),
-            bg='white',
-            fg=self.text_color,
-            anchor='w'
-        )
-        name_label.pack(fill='x')
-        
-        self.name_entry = tk.Entry(
-            name_frame,
-            font=('Arial', 12),
-            relief='solid',
-            bd=1,
-            highlightthickness=1,
-            highlightcolor=self.primary_color,
-            highlightbackground='#dddddd'
-        )
-        self.name_entry.pack(fill='x', pady=(5, 0), ipady=8)
-        self.name_entry.bind('<FocusIn>', lambda e: self.on_entry_focus_in(e, self.name_entry))
-        self.name_entry.bind('<FocusOut>', lambda e: self.on_entry_focus_out(e, self.name_entry))
-        
-        # Email field
-        email_frame = tk.Frame(reg_container, bg='white')
-        email_frame.pack(pady=8, padx=40, fill='x')
-        
-        email_label = tk.Label(
-            email_frame,
-            text="Email",
-            font=('Arial', 10, 'bold'),
-            bg='white',
-            fg=self.text_color,
-            anchor='w'
-        )
-        email_label.pack(fill='x')
-        
-        self.email_entry = tk.Entry(
-            email_frame,
-            font=('Arial', 12),
-            relief='solid',
-            bd=1,
-            highlightthickness=1,
-            highlightcolor=self.primary_color,
-            highlightbackground='#dddddd'
-        )
-        self.email_entry.pack(fill='x', pady=(5, 0), ipady=8)
-        self.email_entry.bind('<FocusIn>', lambda e: self.on_entry_focus_in(e, self.email_entry))
-        self.email_entry.bind('<FocusOut>', lambda e: self.on_entry_focus_out(e, self.email_entry))
-        
-        # Username field
-        username_frame = tk.Frame(reg_container, bg='white')
-        username_frame.pack(pady=8, padx=40, fill='x')
-        
-        username_label = tk.Label(
-            username_frame,
-            text="Username",
-            font=('Arial', 10, 'bold'),
-            bg='white',
-            fg=self.text_color,
-            anchor='w'
-        )
-        username_label.pack(fill='x')
-        
-        self.reg_username_entry = tk.Entry(
-            username_frame,
-            font=('Arial', 12),
-            relief='solid',
-            bd=1,
-            highlightthickness=1,
-            highlightcolor=self.primary_color,
-            highlightbackground='#dddddd'
-        )
-        self.reg_username_entry.pack(fill='x', pady=(5, 0), ipady=8)
-        self.reg_username_entry.bind('<FocusIn>', lambda e: self.on_entry_focus_in(e, self.reg_username_entry))
-        self.reg_username_entry.bind('<FocusOut>', lambda e: self.on_entry_focus_out(e, self.reg_username_entry))
-        
-        # Password field
-        password_frame = tk.Frame(reg_container, bg='white')
-        password_frame.pack(pady=8, padx=40, fill='x')
-        
-        password_label = tk.Label(
-            password_frame,
-            text="Password",
-            font=('Arial', 10, 'bold'),
-            bg='white',
-            fg=self.text_color,
-            anchor='w'
-        )
-        password_label.pack(fill='x')
-        
-        self.reg_password_entry = tk.Entry(
-            password_frame,
-            font=('Arial', 12),
-            relief='solid',
-            bd=1,
-            show='•',
-            highlightthickness=1,
-            highlightcolor=self.primary_color,
-            highlightbackground='#dddddd'
-        )
-        self.reg_password_entry.pack(fill='x', pady=(5, 0), ipady=8)
-        self.reg_password_entry.bind('<FocusIn>', lambda e: self.on_entry_focus_in(e, self.reg_password_entry))
-        self.reg_password_entry.bind('<FocusOut>', lambda e: self.on_entry_focus_out(e, self.reg_password_entry))
-        
-        # Confirm Password field
-        confirm_frame = tk.Frame(reg_container, bg='white')
-        confirm_frame.pack(pady=8, padx=40, fill='x')
-        
-        confirm_label = tk.Label(
-            confirm_frame,
-            text="Confirm Password",
-            font=('Arial', 10, 'bold'),
-            bg='white',
-            fg=self.text_color,
-            anchor='w'
-        )
-        confirm_label.pack(fill='x')
-        
-        self.confirm_password_entry = tk.Entry(
-            confirm_frame,
-            font=('Arial', 12),
-            relief='solid',
-            bd=1,
-            show='•',
-            highlightthickness=1,
-            highlightcolor=self.primary_color,
-            highlightbackground='#dddddd'
-        )
-        self.confirm_password_entry.pack(fill='x', pady=(5, 0), ipady=8)
-        self.confirm_password_entry.bind('<FocusIn>', lambda e: self.on_entry_focus_in(e, self.confirm_password_entry))
-        self.confirm_password_entry.bind('<FocusOut>', lambda e: self.on_entry_focus_out(e, self.confirm_password_entry))
-        
-        # Register button
-        register_button = tk.Button(
-            reg_container,
-            text="Create Account",
-            font=('Arial', 12, 'bold'),
-            bg=self.primary_color,
-            fg='white',
-            activebackground=self.secondary_color,
-            activeforeground='white',
-            relief='flat',
-            bd=0,
-            cursor="hand2",
-            command=self.register
-        )
-        register_button.pack(pady=20, padx=40, fill='x', ipady=12)
-        
-        # Login link
-        login_frame = tk.Frame(reg_container, bg='white')
-        login_frame.pack(pady=10)
-        
-        login_label1 = tk.Label(
-            login_frame,
-            text="Already have an account?",
-            font=('Arial', 10),
-            bg='white',
-            fg=self.text_color
-        )
-        login_label1.pack(side='left')
-        
-        login_label2 = tk.Label(
-            login_frame,
-            text="Sign In",
-            font=('Arial', 10, 'bold', 'underline'),
-            bg='white',
-            fg=self.primary_color,
-            cursor="hand2"
-        )
-        login_label2.pack(side='left', padx=(5, 0))
-        login_label2.bind('<Button-1>', lambda e: self.show_login_screen())
-        
-        # Start animation after UI is created
-        self.root.after(100, self.start_background_animation)
-    
-    def on_entry_focus_in(self, event, entry):
-        """Change border color when entry is focused"""
-        entry.configure(highlightbackground=self.primary_color, highlightcolor=self.primary_color)
-    
-    def on_entry_focus_out(self, event, entry):
-        """Change border color when entry loses focus"""
-        entry.configure(highlightbackground='#dddddd', highlightcolor='#dddddd')
-    
-    def clear_screen(self):
-        """Clear the current screen"""
-        for widget in self.main_frame.winfo_children():
-            if widget != self.canvas:
-                widget.destroy()
-    
-    def login(self):
-        """Handle login process"""
-        username = self.username_entry.get()
-        password = self.password_entry.get()
-        
-        if not username or not password:
-            messagebox.showerror("Error", "Please fill in all fields")
-            return
-        
-        if username in self.users and self.users[username]['password'] == password:
-            messagebox.showinfo("Success", f"Welcome back, {self.users[username]['name']}!")
-            # Here you would typically open the main application
-        else:
-            messagebox.showerror("Error", "Invalid username or password")
-    
-    def register(self):
-        """Handle registration process"""
-        name = self.name_entry.get()
-        email = self.email_entry.get()
-        username = self.reg_username_entry.get()
-        password = self.reg_password_entry.get()
-        confirm_password = self.confirm_password_entry.get()
-        
-        # Validation
-        if not all([name, email, username, password, confirm_password]):
-            messagebox.showerror("Error", "Please fill in all fields")
-            return
-        
-        if password != confirm_password:
-            messagebox.showerror("Error", "Passwords do not match")
-            return
-        
-        if len(password) < 6:
-            messagebox.showerror("Error", "Password must be at least 6 characters long")
-            return
-        
-        if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
-            messagebox.showerror("Error", "Please enter a valid email address")
-            return
-        
-        if username in self.users:
-            messagebox.showerror("Error", "Username already exists")
-            return
-        
-        # Save user
-        self.users[username] = {
-            'name': name,
-            'email': email,
-            'password': password
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Animated Login & Registration</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-        self.save_users()
-        
-        messagebox.showinfo("Success", "Account created successfully!")
-        self.show_login_screen()
-    
-    def forgot_password(self):
-        """Handle forgot password functionality"""
-        messagebox.showinfo("Forgot Password", "Please contact support to reset your password.")
 
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = AnimatedLoginApp(root)
-    root.mainloop()
+        body {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            position: relative;
+            width: 100%;
+            max-width: 1000px;
+            min-height: 600px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            animation: containerSlideIn 1s ease-out;
+        }
+
+        @keyframes containerSlideIn {
+            0% {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .forms-container {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+        }
+
+        .form-control {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 0 10%;
+            text-align: center;
+            transition: all 0.6s ease-in-out;
+        }
+
+        .login-form {
+            opacity: 1;
+            z-index: 2;
+        }
+
+        .register-form {
+            opacity: 0;
+            z-index: 1;
+        }
+
+        .container.active .login-form {
+            opacity: 0;
+            z-index: 1;
+            animation: formSlideOut 0.6s ease-in-out;
+        }
+
+        .container.active .register-form {
+            opacity: 1;
+            z-index: 2;
+            animation: formSlideIn 0.6s ease-in-out;
+        }
+
+        @keyframes formSlideIn {
+            0% {
+                transform: translateX(100px);
+                opacity: 0;
+            }
+            100% {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes formSlideOut {
+            0% {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            100% {
+                transform: translateX(-100px);
+                opacity: 0;
+            }
+        }
+
+        .form-title {
+            font-size: 2.5rem;
+            color: white;
+            margin-bottom: 20px;
+            font-weight: 700;
+            position: relative;
+            display: inline-block;
+        }
+
+        .form-title::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 4px;
+            background: white;
+            border-radius: 2px;
+            animation: titleUnderline 2s infinite;
+        }
+
+        @keyframes titleUnderline {
+            0%, 100% {
+                width: 60px;
+            }
+            50% {
+                width: 100px;
+            }
+        }
+
+        .form-subtitle {
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 40px;
+            font-size: 1rem;
+            animation: subtitleFadeIn 1.5s ease-out;
+        }
+
+        @keyframes subtitleFadeIn {
+            0% {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .input-group {
+            position: relative;
+            margin-bottom: 30px;
+            width: 100%;
+            max-width: 380px;
+            transition: all 0.3s ease;
+        }
+
+        .input-field {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            outline: none;
+            padding: 15px 20px 15px 45px;
+            border-radius: 50px;
+            color: white;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .input-field:focus {
+            background: rgba(255, 255, 255, 0.3);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
+            transform: scale(1.02);
+        }
+
+        .input-field::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: rgba(255, 255, 255, 0.7);
+            transition: all 0.3s ease;
+        }
+
+        .input-field:focus + .input-icon {
+            color: white;
+            transform: translateY(-50%) scale(1.2);
+        }
+
+        .submit-btn {
+            width: 100%;
+            max-width: 380px;
+            background: white;
+            border: none;
+            padding: 15px;
+            border-radius: 50px;
+            color: #6a11cb;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .submit-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            transition: all 0.5s ease;
+        }
+
+        .submit-btn:hover::before {
+            left: 100%;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 7px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .submit-btn:active {
+            transform: translateY(-1px);
+        }
+
+        .switch-form {
+            margin-top: 30px;
+            color: white;
+            animation: fadeIn 1s ease-out;
+        }
+
+        @keyframes fadeIn {
+            0% {
+                opacity: 0;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
+
+        .switch-form a {
+            color: white;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .switch-form a::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: white;
+            transition: width 0.3s ease;
+        }
+
+        .switch-form a:hover::after {
+            width: 100%;
+        }
+
+        .panels-container {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+        }
+
+        .panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 40%;
+            padding: 0 5%;
+            text-align: center;
+            z-index: 6;
+            transition: all 0.6s ease-in-out;
+        }
+
+        .left-panel {
+            pointer-events: none;
+            opacity: 1;
+        }
+
+        .right-panel {
+            pointer-events: none;
+            opacity: 0;
+        }
+
+        .container.active .left-panel {
+            opacity: 0;
+            animation: panelSlideOut 0.6s ease-in-out;
+        }
+
+        .container.active .right-panel {
+            opacity: 1;
+            animation: panelSlideIn 0.6s ease-in-out;
+        }
+
+        @keyframes panelSlideIn {
+            0% {
+                transform: translateX(100px);
+                opacity: 0;
+            }
+            100% {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes panelSlideOut {
+            0% {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            100% {
+                transform: translateX(-100px);
+                opacity: 0;
+            }
+        }
+
+        .panel-content {
+            color: white;
+            transition: all 0.6s ease-in-out;
+        }
+
+        .panel h3 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .panel p {
+            font-size: 1rem;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+
+        .panel-btn {
+            border: 2px solid white;
+            background: transparent;
+            color: white;
+            padding: 10px 30px;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .panel-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: white;
+            transition: all 0.3s ease;
+            z-index: -1;
+        }
+
+        .panel-btn:hover::before {
+            left: 0;
+        }
+
+        .panel-btn:hover {
+            color: #6a11cb;
+        }
+
+        /* Enhanced Animation Elements */
+        .animation-circle {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            animation: float 15s infinite ease-in-out;
+        }
+
+        .circle-1 {
+            width: 200px;
+            height: 200px;
+            top: 10%;
+            left: 5%;
+            animation-delay: 0s;
+        }
+
+        .circle-2 {
+            width: 150px;
+            height: 150px;
+            top: 60%;
+            left: 10%;
+            animation-delay: 2s;
+        }
+
+        .circle-3 {
+            width: 100px;
+            height: 100px;
+            top: 20%;
+            right: 10%;
+            animation-delay: 4s;
+        }
+
+        .circle-4 {
+            width: 120px;
+            height: 120px;
+            bottom: 10%;
+            right: 5%;
+            animation-delay: 6s;
+        }
+
+        .circle-5 {
+            width: 80px;
+            height: 80px;
+            top: 80%;
+            left: 80%;
+            animation-delay: 1s;
+        }
+
+        .circle-6 {
+            width: 180px;
+            height: 180px;
+            top: 5%;
+            right: 15%;
+            animation-delay: 3s;
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0) translateX(0) rotate(0deg);
+            }
+            25% {
+                transform: translateY(-20px) translateX(10px) rotate(5deg);
+            }
+            50% {
+                transform: translateY(-10px) translateX(-10px) rotate(-5deg);
+            }
+            75% {
+                transform: translateY(20px) translateX(-5px) rotate(3deg);
+            }
+        }
+
+        /* Enhanced Success Message */
+        .success-message {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #4CAF50;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 5px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            transform: translateX(150%);
+            transition: transform 0.5s ease;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .success-message.show {
+            transform: translateX(0);
+            animation: messagePulse 2s infinite;
+        }
+
+        @keyframes messagePulse {
+            0%, 100% {
+                box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            }
+            50% {
+                box-shadow: 0 5px 20px rgba(76, 175, 80, 0.5);
+            }
+        }
+
+        /* Particle Animation */
+        .particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: -1;
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            animation: particleFloat 20s infinite linear;
+        }
+
+        @keyframes particleFloat {
+            0% {
+                transform: translateY(100vh) translateX(0);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-100px) translateX(100px);
+                opacity: 0;
+            }
+        }
+
+        /* Glow Effect */
+        .glow {
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%);
+            filter: blur(20px);
+            animation: glowMove 15s infinite alternate;
+            z-index: -1;
+        }
+
+        @keyframes glowMove {
+            0% {
+                transform: translate(10%, 10%);
+            }
+            100% {
+                transform: translate(-10%, -10%);
+            }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 870px) {
+            .container {
+                min-height: 800px;
+                height: auto;
+            }
+
+            .panels-container {
+                flex-direction: column;
+                justify-content: space-between;
+            }
+
+            .panel {
+                flex-direction: row;
+                justify-content: space-around;
+                align-items: center;
+                width: 100%;
+                padding: 2.5rem 8%;
+            }
+
+            .left-panel {
+                order: 2;
+            }
+
+            .right-panel {
+                order: 1;
+            }
+
+            .panel-content {
+                padding-right: 15px;
+            }
+        }
+
+        @media (max-width: 570px) {
+            .form-control {
+                padding: 0 1.5rem;
+            }
+
+            .panel {
+                flex-direction: column;
+                padding: 1rem;
+            }
+
+            .panel-content {
+                padding-right: 0;
+                margin-bottom: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Enhanced Animation Elements -->
+    <div class="animation-circle circle-1"></div>
+    <div class="animation-circle circle-2"></div>
+    <div class="animation-circle circle-3"></div>
+    <div class="animation-circle circle-4"></div>
+    <div class="animation-circle circle-5"></div>
+    <div class="animation-circle circle-6"></div>
+
+    <!-- Particles -->
+    <div class="particles" id="particles"></div>
+
+    <!-- Glow Effects -->
+    <div class="glow" style="top: 10%; left: 10%;"></div>
+    <div class="glow" style="bottom: 10%; right: 10%;"></div>
+
+    <!-- Success Message -->
+    <div class="success-message" id="successMessage">
+        <i class="fas fa-check-circle"></i>
+        <span>Operation completed successfully!</span>
+    </div>
+
+    <div class="container" id="container">
+        <div class="forms-container">
+            <!-- Login Form -->
+            <div class="form-control login-form">
+                <h2 class="form-title">Welcome Back!</h2>
+                <p class="form-subtitle">Please login to your account</p>
+                
+                <form id="loginForm">
+                    <div class="input-group">
+                        <input type="text" class="input-field" placeholder="Username or Email" required>
+                        <i class="fas fa-user input-icon"></i>
+                    </div>
+                    <div class="input-group">
+                        <input type="password" class="input-field" placeholder="Password" required>
+                        <i class="fas fa-lock input-icon"></i>
+                    </div>
+                    <button type="submit" class="submit-btn">Sign In</button>
+                </form>
+                
+                <div class="switch-form">
+                    Don't have an account? <a id="show-register">Sign Up</a>
+                </div>
+            </div>
+
+            <!-- Registration Form -->
+            <div class="form-control register-form">
+                <h2 class="form-title">Create Account</h2>
+                <p class="form-subtitle">Sign up for a new account</p>
+                
+                <form id="registerForm">
+                    <div class="input-group">
+                        <input type="text" class="input-field" placeholder="Full Name" required>
+                        <i class="fas fa-user input-icon"></i>
+                    </div>
+                    <div class="input-group">
+                        <input type="email" class="input-field" placeholder="Email" required>
+                        <i class="fas fa-envelope input-icon"></i>
+                    </div>
+                    <div class="input-group">
+                        <input type="text" class="input-field" placeholder="Username" required>
+                        <i class="fas fa-at input-icon"></i>
+                    </div>
+                    <div class="input-group">
+                        <input type="password" class="input-field" placeholder="Password" required>
+                        <i class="fas fa-lock input-icon"></i>
+                    </div>
+                    <div class="input-group">
+                        <input type="password" class="input-field" placeholder="Confirm Password" required>
+                        <i class="fas fa-lock input-icon"></i>
+                    </div>
+                    <button type="submit" class="submit-btn">Sign Up</button>
+                </form>
+                
+                <div class="switch-form">
+                    Already have an account? <a id="show-login">Sign In</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="panels-container">
+            <!-- Left Panel (Login) -->
+            <div class="panel left-panel">
+                <div class="panel-content">
+                    <h3>New here?</h3>
+                    <p>Create an account and discover a great community!</p>
+                    <button class="panel-btn" id="register-btn">Sign Up</button>
+                </div>
+            </div>
+
+            <!-- Right Panel (Register) -->
+            <div class="panel right-panel">
+                <div class="panel-content">
+                    <h3>One of us?</h3>
+                    <p>If you already have an account, just sign in.</p>
+                    <button class="panel-btn" id="login-btn">Sign In</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const container = document.getElementById('container');
+        const showRegister = document.getElementById('show-register');
+        const showLogin = document.getElementById('show-login');
+        const registerBtn = document.getElementById('register-btn');
+        const loginBtn = document.getElementById('login-btn');
+        const loginForm = document.getElementById('loginForm');
+        const registerForm = document.getElementById('registerForm');
+        const successMessage = document.getElementById('successMessage');
+        const particlesContainer = document.getElementById('particles');
+
+        // Create particles
+        function createParticles() {
+            for (let i = 0; i < 50; i++) {
+                const particle = document.createElement('div');
+                particle.classList.add('particle');
+                particle.style.left = `${Math.random() * 100}%`;
+                particle.style.animationDelay = `${Math.random() * 20}s`;
+                particle.style.animationDuration = `${15 + Math.random() * 10}s`;
+                particlesContainer.appendChild(particle);
+            }
+        }
+
+        // Switch to Register Form
+        showRegister.addEventListener('click', () => {
+            container.classList.add('active');
+        });
+
+        registerBtn.addEventListener('click', () => {
+            container.classList.add('active');
+        });
+
+        // Switch to Login Form
+        showLogin.addEventListener('click', () => {
+            container.classList.remove('active');
+        });
+
+        loginBtn.addEventListener('click', () => {
+            container.classList.remove('active');
+        });
+
+        // Form Submission
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            showSuccessMessage('Login successful!');
+        });
+
+        registerForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            showSuccessMessage('Registration successful!');
+        });
+
+        // Show Success Message
+        function showSuccessMessage(message) {
+            successMessage.querySelector('span').textContent = message;
+            successMessage.classList.add('show');
+            
+            setTimeout(() => {
+                successMessage.classList.remove('show');
+            }, 3000);
+        }
+
+        // Add floating animation to input fields on focus
+        const inputFields = document.querySelectorAll('.input-field');
+        
+        inputFields.forEach(input => {
+            input.addEventListener('focus', () => {
+                input.parentElement.style.transform = 'translateY(-5px)';
+            });
+            
+            input.addEventListener('blur', () => {
+                input.parentElement.style.transform = 'translateY(0)';
+            });
+        });
+
+        // Initialize particles
+        createParticles();
+    </script>
+</body>
+</html>
